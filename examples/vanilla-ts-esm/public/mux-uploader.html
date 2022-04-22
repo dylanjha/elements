@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width" />
+    <title>Basic &lt;mux-uploader/&gt; example</title>
+    <script type="module" src="./dist/mux-uploader.js"></script>
+    <style>
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      mux-uploader {
+        width: 100%;
+        max-width: 800px;
+        margin: 40px auto;
+        display: block;
+        background: #bae6fd;
+        padding: 40px;
+        padding-bottom: 150px;
+      }
+    </style>
+  </head>
+  <body>
+    <mux-uploader>
+      <h1>Page title</h1>
+      <p>This is my webpage</p>
+      <p>The whole blue area should be drag-and-droppable</p>
+    </mux-uploader>
+    <a href="../">Browse Elements</a>
+  </body>
+</html>
