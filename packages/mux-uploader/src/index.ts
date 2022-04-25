@@ -10,6 +10,10 @@ template.innerHTML = `
   :host([drag-active]) {
     background: #0369a1;
   }
+  p {
+    font-size: 48px;
+    color: #facc15;
+  }
   input[type="file"] {
     display: none;
   }
@@ -25,6 +29,10 @@ template.innerHTML = `
 <input type="file" />
 <slot></slot>
 <button type="button">Pick a video file</button>
+<div>
+<progress id="progress-bar" value="0" max="100" />
+</div>
+<p id="upload-status"></p>
 `;
 
 class MuxUploaderElement extends HTMLElement {
@@ -87,6 +95,10 @@ class MuxUploaderElement extends HTMLElement {
 
     upload.on('progress', (progress) => {
       console.log(`So far we've uploaded ${progress.detail}% of this file.`);
+      const progressBar = this.shadowRoot?.getElementById('progress-bar');
+      const progressStatus = this.shadowRoot?.getElementById('upload-status');
+      progressBar?.setAttribute('value', progress.detail);
+      progressStatus.innerHTML = Math.floor(progress.detail);
     });
 
     upload.on('success', () => {
