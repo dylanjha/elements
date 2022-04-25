@@ -1,3 +1,5 @@
+import * as UpChunk from '@mux/upchunk';
+
 const template = document.createElement('template');
 
 template.innerHTML = `
@@ -64,6 +66,31 @@ class MuxUploaderElement extends HTMLElement {
       const file = files[0];
       const uploadUrl = this.getAttribute('url');
       console.log('debug got a file dropped', file, uploadUrl);
+      this.handleUpload(file);
+    });
+  }
+
+  handleUpload(file: File) {
+    const url = this.getAttribute('url');
+    if (!url) {
+      throw Error('No url attribute specified -- cannot handleUpload');
+    }
+    const upload = UpChunk.createUpload({
+      endpoint: url,
+      file,
+    });
+
+    // subscribe to events
+    upload.on('error', (err) => {
+      console.error('💥 🙀', err.detail);
+    });
+
+    upload.on('progress', (progress) => {
+      console.log(`So far we've uploaded ${progress.detail}% of this file.`);
+    });
+
+    upload.on('success', () => {
+      console.log("Wrap it up, we're done here. 👋");
     });
   }
 }
