@@ -5,7 +5,7 @@ const template = document.createElement('template');
 template.innerHTML = `
 <style>
   :host {
-    background: #bae6fd;
+    background: #f1f5f9;
   }
   :host([drag-active]) {
     background: #0369a1;
@@ -25,22 +25,55 @@ template.innerHTML = `
     font-size: 24px;
     border: none;
   }
+  .radial-type, .bar-type {
+    display: none;
+  }
+  :host([type="radial"]) .radial-type {
+    display: block;
+  }
+  :host([type="bar"]) .bar-type {
+    display: block;
+  }
   :host([upload-in-progress]) button {
     display: none;
+  }
+  .circle svg circle {
+    stroke:#dcdcdc;
+    stroke-width: 10;
+    stroke-linecap:round;
+    transform:translate(5px,5px);
+    fill: transparent;
   }
 </style>
 <input type="file" />
 <slot></slot>
 <button type="button">Pick a video file</button>
-<div>
-<progress id="progress-bar" value="0" max="100" />
+<div class="bar-type">
+  <progress id="progress-bar" value="0" max="100" />
+</div>
+<div class="radial-type">
+  <div class="circle">
+    <svg>
+      <circle
+        r="58"
+        cx="60"
+        cy="60"
+      />
+    <svg>
+  </div>
 </div>
 <p id="upload-status"></p>
 `;
 
+const TYPES = {
+  BAR: 'bar',
+  RADIAL: 'radial',
+};
+
 class MuxUploaderElement extends HTMLElement {
   hiddenFileInput: HTMLInputElement | null | undefined;
   filePickerButton: HTMLButtonElement | null | undefined;
+  svgCircle: HTMLElement | null | undefined;
 
   constructor() {
     super();
@@ -54,6 +87,17 @@ class MuxUploaderElement extends HTMLElement {
     this.filePickerButton = this.shadowRoot?.querySelector('button[type="button"]');
     this.setupFilePickerButton();
     this.setupDragAndDrop();
+    this.setDefaultType();
+  }
+
+  setDefaultType() {
+    const currentType = this.getAttribute('type');
+    if (!currentType) {
+      this.setAttribute('type', TYPES.BAR);
+    }
+    if (this.getAttribute('type') === TYPES.RADIAL) {
+      this.svgCircle = this.shadowRoot?.querySelector('.circle svg circle');
+    }
   }
 
   setupFilePickerButton() {
@@ -91,7 +135,6 @@ class MuxUploaderElement extends HTMLElement {
       const { files } = dataTransfer;
       const file = files[0];
       const uploadUrl = this.getAttribute('url');
-      console.log('debug got a file dropped', file, uploadUrl);
       this.handleUpload(file);
     });
   }
@@ -119,6 +162,10 @@ class MuxUploaderElement extends HTMLElement {
       progressBar?.setAttribute('value', progress.detail);
       if (progressStatus) {
         progressStatus.innerHTML = Math.floor(progress?.detail)?.toString();
+      }
+      if (this.svgCircle) {
+        /* set the svg styles to show the progress */
+        this.svgCircle.style.strokeDasharray = '10 20';
       }
     });
 
