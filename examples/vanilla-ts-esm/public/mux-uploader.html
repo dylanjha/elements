@@ -11,23 +11,39 @@
         align-items: flex-start;
       }
 
+      .direct-upload-url {
+        padding: 8px 12px;
+        width: 400px;
+        max-width: 100%;
+      }
+
       mux-uploader {
         width: 100%;
         max-width: 800px;
         margin: 40px auto;
         display: block;
-        background: #bae6fd;
         padding: 40px;
         padding-bottom: 150px;
       }
     </style>
   </head>
   <body>
+    <h1>Enter your upload GCS url:</h1>
+    <input type="text" class="direct-upload-url" placeholder="https://storage.googleapis.com/..." />
     <mux-uploader>
-      <h1>Page title</h1>
+      <h1>New Page Title</h1>
       <p>This is my webpage</p>
       <p>The whole blue area should be drag-and-droppable</p>
     </mux-uploader>
     <a href="../">Browse Elements</a>
+
+    <script>
+      const input = document.querySelector('input[type="text"]');
+      const muxUploader = document.querySelector('mux-uploader');
+      input.addEventListener('change', () => {
+        console.log('debug change', input.value);
+        muxUploader.setAttribute('url', input.value);
+      });
+    </script>
   </body>
 </html>

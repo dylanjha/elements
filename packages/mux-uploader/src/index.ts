@@ -2,6 +2,12 @@ const template = document.createElement('template');
 
 template.innerHTML = `
 <style>
+  :host {
+    background: #bae6fd;
+  }
+  :host([drag-active]) {
+    background: #0369a1;
+  }
   input[type="file"] {
     display: none;
   }
@@ -16,21 +22,49 @@ template.innerHTML = `
 </style>
 <input type="file" />
 <slot></slot>
-<button type="button">Pick a file</button>
+<button type="button">Pick a video file</button>
 `;
 
 class MuxUploaderElement extends HTMLElement {
+  hiddenFileInput: HTMLInputElement | null | undefined;
+
   constructor() {
     super();
-    console.log('debug MuxUploaderElement');
     const shadow = this.attachShadow({ mode: 'open' });
     const uploaderHtml = template.content.cloneNode(true);
     shadow.appendChild(uploaderHtml);
   }
 
   connectedCallback() {
-    this.hiddenFileInput = this.shadow.querySelector('input[type="file"]');
-    console.log('debug connectedCallback', this.hiddenFileInput);
+    this.hiddenFileInput = this.shadowRoot?.querySelector('input[type="file"]');
+    this.setupDragAndDrop();
+  }
+
+  setupDragAndDrop() {
+    this.addEventListener('dragenter', (evt) => {
+      evt.preventDefault();
+      evt.stopPropagation();
+      this.setAttribute('drag-active', '');
+    });
+    this.addEventListener('dragleave', (evt) => {
+      evt.preventDefault();
+      evt.stopPropagation();
+      this.removeAttribute('drag-active');
+    });
+    this.addEventListener('dragover', (evt) => {
+      evt.preventDefault();
+      evt.stopPropagation();
+    });
+    this.addEventListener('drop', (evt) => {
+      evt.preventDefault();
+      evt.stopPropagation();
+      const { dataTransfer } = evt;
+      //@ts-ignore
+      const { files } = dataTransfer;
+      const file = files[0];
+      const uploadUrl = this.getAttribute('url');
+      console.log('debug got a file dropped', file, uploadUrl);
+    });
   }
 }
 
