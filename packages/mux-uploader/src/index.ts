@@ -25,6 +25,9 @@ template.innerHTML = `
     font-size: 24px;
     border: none;
   }
+  :host([upload-in-progress]) button {
+    display: none;
+  }
 </style>
 <input type="file" />
 <slot></slot>
@@ -37,6 +40,7 @@ template.innerHTML = `
 
 class MuxUploaderElement extends HTMLElement {
   hiddenFileInput: HTMLInputElement | null | undefined;
+  filePickerButton: HTMLButtonElement | null | undefined;
 
   constructor() {
     super();
@@ -47,7 +51,21 @@ class MuxUploaderElement extends HTMLElement {
 
   connectedCallback() {
     this.hiddenFileInput = this.shadowRoot?.querySelector('input[type="file"]');
+    this.filePickerButton = this.shadowRoot?.querySelector('button[type="button"]');
+    this.setupFilePickerButton();
     this.setupDragAndDrop();
+  }
+
+  setupFilePickerButton() {
+    this.filePickerButton?.addEventListener('click', (evt) => {
+      this.hiddenFileInput?.click();
+    });
+    this.hiddenFileInput?.addEventListener('change', (evt) => {
+      const file = this.hiddenFileInput?.files && this.hiddenFileInput?.files[0];
+      if (file) {
+        this.handleUpload(file);
+      }
+    });
   }
 
   setupDragAndDrop() {
@@ -83,6 +101,7 @@ class MuxUploaderElement extends HTMLElement {
     if (!url) {
       throw Error('No url attribute specified -- cannot handleUpload');
     }
+    this.setAttribute('upload-in-progress', '');
     const upload = UpChunk.createUpload({
       endpoint: url,
       file,
@@ -98,7 +117,9 @@ class MuxUploaderElement extends HTMLElement {
       const progressBar = this.shadowRoot?.getElementById('progress-bar');
       const progressStatus = this.shadowRoot?.getElementById('upload-status');
       progressBar?.setAttribute('value', progress.detail);
-      progressStatus.innerHTML = Math.floor(progress.detail);
+      if (progressStatus) {
+        progressStatus.innerHTML = Math.floor(progress?.detail)?.toString();
+      }
     });
 
     upload.on('success', () => {

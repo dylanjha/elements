@@ -19,22 +19,21 @@
 
       mux-uploader {
         width: 100%;
-        max-width: 800px;
+        max-width: 400px;
         margin: 40px auto;
         display: block;
         padding: 40px;
         padding-bottom: 150px;
+      }
+      mux-uploader[upload-in-progress] {
+        background-color: #fecaca;
       }
     </style>
   </head>
   <body>
     <h1>Enter your upload GCS url:</h1>
     <input type="text" class="direct-upload-url" placeholder="https://storage.googleapis.com/..." />
-    <mux-uploader>
-      <h1>New Page Title</h1>
-      <p>This is my webpage</p>
-      <p>The whole blue area should be drag-and-droppable</p>
-    </mux-uploader>
+    <mux-uploader></mux-uploader>
     <a href="../">Browse Elements</a>
 
     <script>
