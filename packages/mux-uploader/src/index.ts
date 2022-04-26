@@ -28,10 +28,10 @@ template.innerHTML = `
   .radial-type, .bar-type {
     display: none;
   }
-  :host([type="radial"]) .radial-type {
+  :host([type="radial"][upload-in-progress]) .radial-type {
     display: block;
   }
-  :host([type="bar"]) .bar-type {
+  :host([type="bar"][upload-in-progress]) .bar-type {
     display: block;
   }
   :host([upload-in-progress]) button {
@@ -55,6 +55,7 @@ template.innerHTML = `
 <button type="button">Pick a video file</button>
 <div class="bar-type">
   <progress id="progress-bar" value="0" max="100" />
+
 </div>
 <div class="radial-type">
   <svg
