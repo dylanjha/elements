@@ -78,7 +78,7 @@ const TYPES = {
 class MuxUploaderElement extends HTMLElement {
   hiddenFileInput: HTMLInputElement | null | undefined;
   filePickerButton: HTMLButtonElement | null | undefined;
-  svgCircle: HTMLElement | null | undefined;
+  svgCircle: SVGCircleElement | null | undefined;
 
   constructor() {
     super();
@@ -90,6 +90,7 @@ class MuxUploaderElement extends HTMLElement {
   connectedCallback() {
     this.hiddenFileInput = this.shadowRoot?.querySelector('input[type="file"]');
     this.filePickerButton = this.shadowRoot?.querySelector('button[type="button"]');
+    this.svgCircle = this.shadowRoot?.querySelector('circle');
     this.setupFilePickerButton();
     this.setupDragAndDrop();
     this.setDefaultType();
@@ -101,8 +102,6 @@ class MuxUploaderElement extends HTMLElement {
       this.setAttribute('type', TYPES.BAR);
     }
     if (this.getAttribute('type') === TYPES.RADIAL) {
-      this.svgCircle = this.shadowRoot?.querySelector('circle');
-
       const radius = Number(this.svgCircle?.getAttribute('r'));
       const circumference = radius * 2 * Math.PI;
 
