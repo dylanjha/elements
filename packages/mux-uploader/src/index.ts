@@ -103,11 +103,13 @@ class MuxUploaderElement extends HTMLElement {
     if (this.getAttribute('type') === TYPES.RADIAL) {
       this.svgCircle = this.shadowRoot?.querySelector('circle');
 
-      const radius = this.svgCircle?.getAttribute('r');
+      const radius = Number(this.svgCircle?.getAttribute('r'));
       const circumference = radius * 2 * Math.PI;
 
-      this.svgCircle.style.strokeDasharray = `${circumference} ${circumference}`;
-      this.svgCircle.style.strokeDashoffset = `${circumference}`;
+      if (this.svgCircle) {
+        this.svgCircle.style.strokeDasharray = `${circumference} ${circumference}`;
+        this.svgCircle.style.strokeDashoffset = `${circumference}`;
+      }
     }
   }
 
@@ -150,10 +152,13 @@ class MuxUploaderElement extends HTMLElement {
   }
 
   setProgress(percent: number) {
-    const radius = this.svgCircle?.getAttribute('r');
+    const radius = Number(this.svgCircle?.getAttribute('r'));
     const circumference = radius * 2 * Math.PI;
     const offset = circumference - (percent / 100) * circumference;
-    this.svgCircle.style.strokeDashoffset = offset.toString();
+
+    if (this.svgCircle) {
+      this.svgCircle.style.strokeDashoffset = offset.toString();
+    }
   }
 
   handleUpload(file: File) {
