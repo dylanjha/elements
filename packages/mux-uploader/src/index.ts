@@ -12,7 +12,7 @@ template.innerHTML = `
   }
   p {
     font-size: 48px;
-    color: #facc15;
+    color: black;
   }
   input[type="file"] {
     display: none;
@@ -37,12 +37,17 @@ template.innerHTML = `
   :host([upload-in-progress]) button {
     display: none;
   }
-  .circle svg circle {
-    stroke:#dcdcdc;
-    stroke-width: 10;
-    stroke-linecap:round;
-    transform:translate(5px,5px);
+
+  circle {
+    stroke: black;
+    stroke-width: 6;
     fill: transparent;
+  
+    transition: 0.35s stroke-dashoffset;
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+    -webkit-transform-origin: 50% 50%;
+    -moz-transform-origin: 50% 50%;
   }
 </style>
 <input type="file" />
@@ -52,15 +57,15 @@ template.innerHTML = `
   <progress id="progress-bar" value="0" max="100" />
 </div>
 <div class="radial-type">
-  <div class="circle">
-    <svg>
-      <circle
-        r="58"
-        cx="60"
-        cy="60"
-      />
-    <svg>
-  </div>
+  <svg
+    width="120"
+    height="120">
+    <circle
+      r="58"
+      cx="60"
+      cy="60"
+    />
+  <svg>
 </div>
 <p id="upload-status"></p>
 `;
@@ -96,7 +101,13 @@ class MuxUploaderElement extends HTMLElement {
       this.setAttribute('type', TYPES.BAR);
     }
     if (this.getAttribute('type') === TYPES.RADIAL) {
-      this.svgCircle = this.shadowRoot?.querySelector('.circle svg circle');
+      this.svgCircle = this.shadowRoot?.querySelector('circle');
+
+      const radius = this.svgCircle?.getAttribute('r');
+      const circumference = radius * 2 * Math.PI;
+
+      this.svgCircle.style.strokeDasharray = `${circumference} ${circumference}`;
+      this.svgCircle.style.strokeDashoffset = `${circumference}`;
     }
   }
 
@@ -134,9 +145,15 @@ class MuxUploaderElement extends HTMLElement {
       //@ts-ignore
       const { files } = dataTransfer;
       const file = files[0];
-      const uploadUrl = this.getAttribute('url');
       this.handleUpload(file);
     });
+  }
+
+  setProgress(percent: number) {
+    const radius = this.svgCircle?.getAttribute('r');
+    const circumference = radius * 2 * Math.PI;
+    const offset = circumference - (percent / 100) * circumference;
+    this.svgCircle.style.strokeDashoffset = offset.toString();
   }
 
   handleUpload(file: File) {
@@ -164,8 +181,7 @@ class MuxUploaderElement extends HTMLElement {
         progressStatus.innerHTML = Math.floor(progress?.detail)?.toString();
       }
       if (this.svgCircle) {
-        /* set the svg styles to show the progress */
-        this.svgCircle.style.strokeDasharray = '10 20';
+        this.setProgress(progress.detail);
       }
     });
 
