@@ -5,37 +5,60 @@ const template = document.createElement('template');
 template.innerHTML = `
 <style>
   :host {
+    font-family: sans-serif;
+    border: 1px dashed grey;
     background: #f1f5f9;
   }
+
   :host([drag-active]) {
-    background: #0369a1;
+    background: #cbd5e1;
   }
+
   p {
     font-size: 48px;
     color: black;
   }
+
   input[type="file"] {
     display: none;
   }
+
   button {
-    background: #075985;
-    color: white;
-    padding: 12px 16px;
-    border-radius: 24px;
-    font-size: 24px;
-    border: none;
+    cursor: pointer;
+    font-size: 26px;
+    line-height: 33px;
+    background: #fff;
+    border: 2px solid #222222;
+    color: #222222;
+    padding: 10px 20px;
+    border-radius: 50px;
+    -webkit-transition: all 0.2s ease;
+    transition: all 0.2s ease;
   }
-  .radial-type, .bar-type {
+
+  button:hover {
+    color: #fff;
+    background: #222222;
+  }
+
+  .radial-type, .bar-type, .error-message {
     display: none;
   }
+
   :host([type="radial"][upload-in-progress]) .radial-type {
     display: block;
   }
+
   :host([type="bar"][upload-in-progress]) .bar-type {
     display: block;
   }
+  
   :host([upload-in-progress]) button {
     display: none;
+  }
+
+  svg {
+    overflow: visible
   }
 
   circle {
@@ -52,10 +75,10 @@ template.innerHTML = `
 </style>
 <input type="file" />
 <slot></slot>
-<button type="button">Pick a video file</button>
+<p>Drag a file here to upload or</p>
+<button type="button">Browse files</button>
 <div class="bar-type">
   <progress id="progress-bar" value="0" max="100" />
-
 </div>
 <div class="radial-type">
   <svg
@@ -69,6 +92,7 @@ template.innerHTML = `
   <svg>
 </div>
 <p id="upload-status"></p>
+<p id="error-message"></p>
 `;
 
 const TYPES = {
@@ -163,9 +187,18 @@ class MuxUploaderElement extends HTMLElement {
 
   handleUpload(file: File) {
     const url = this.getAttribute('url');
+    const errorMessage = this.shadowRoot?.getElementById('error-message');
     if (!url) {
+      if (errorMessage) {
+        errorMessage.innerHTML = 'No url attribute specified -- cannot handleUpload';
+      }
       throw Error('No url attribute specified -- cannot handleUpload');
     }
+
+    if (errorMessage) {
+      errorMessage.innerHTML = '';
+    }
+
     this.setAttribute('upload-in-progress', '');
     const upload = UpChunk.createUpload({
       endpoint: url,
@@ -174,11 +207,15 @@ class MuxUploaderElement extends HTMLElement {
 
     // subscribe to events
     upload.on('error', (err) => {
-      console.error('💥 🙀', err.detail);
+      const errorMessage = this.shadowRoot?.getElementById('error-message');
+      console.log(errorMessage);
+
+      if (errorMessage) {
+        errorMessage.innerHTML = err.detail;
+      }
     });
 
     upload.on('progress', (progress) => {
-      console.log(`So far we've uploaded ${progress.detail}% of this file.`);
       const progressBar = this.shadowRoot?.getElementById('progress-bar');
       const progressStatus = this.shadowRoot?.getElementById('upload-status');
       progressBar?.setAttribute('value', progress.detail);
@@ -191,7 +228,7 @@ class MuxUploaderElement extends HTMLElement {
     });
 
     upload.on('success', () => {
-      console.log("Wrap it up, we're done here. 👋");
+      console.log("Wrap it up, we're almost done here. 👋");
     });
   }
 }
