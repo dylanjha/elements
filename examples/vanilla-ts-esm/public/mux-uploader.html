@@ -19,12 +19,14 @@
       }
 
       mux-uploader {
+        font-family: Arial;
+
         width: 100%;
-        max-width: 400px;
         margin: 40px auto;
         display: block;
-        padding: 40px;
         padding-bottom: 150px;
+        max-width: 400px;
+        padding: 40px;
       }
       mux-uploader[upload-in-progress] {
         background-color: white;
@@ -35,7 +37,7 @@
   <body>
     <h1>Enter your upload GCS url:</h1>
     <input type="text" class="direct-upload-url" placeholder="https://storage.googleapis.com/..." />
-    <mux-uploader type="bar"></mux-uploader>
+    <mux-uploader type="bar" showPercentage></mux-uploader>
     <a href="../">Browse Elements</a>
 
     <script>

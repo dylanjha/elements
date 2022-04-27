@@ -4,10 +4,8 @@ const template = document.createElement('template');
 
 template.innerHTML = `
 <style>
-  :host {
-    font-family: Arial;
-    border: 1px dashed grey;
-    background: #f1f5f9;
+  :host([draggable]) #upload-instruction{
+    display: block;
   }
 
   :host([drag-active]) {
@@ -15,7 +13,7 @@ template.innerHTML = `
   }
 
   p {
-    font-size: 48px;
+    font-size: 32px;
     color: black;
   }
 
@@ -25,7 +23,7 @@ template.innerHTML = `
 
   button {
     cursor: pointer;
-    font-size: 26px;
+    font-size: 16px;
     line-height: 33px;
     background: #fff;
     border: 2px solid #222222;
@@ -49,9 +47,18 @@ template.innerHTML = `
     width: 100%;
   }
 
-  .radial-type, .bar-type, .error-message {
+  .radial-type, .bar-type, #upload-instruction {
     display: none;
   }
+
+  #upload-status {
+    opacity: 0;
+  }
+
+  :host([showPercentage][upload-in-progress]) #upload-status {
+    opacity: 1; 
+  }
+
 
   :host([type="radial"][upload-in-progress]) .radial-type {
     display: block;
@@ -89,12 +96,14 @@ template.innerHTML = `
     -moz-transform-origin: 50% 50%;
   }
 </style>
-<input type="file" />
-<slot></slot>
-<p>Drag a file here to upload or</p>
-<button type="button">Browse files</button>
+<div class="drop-zone">
+  <input type="file" />
+  <slot></slot>
+  <p id="upload-instruction">Drop file to upload</p>
+  <button type="button">Upload video</button>
+</div>
 <div class="bar-type">
-  <div class="progress-bar" id="progress-bar"/>
+  <div class="progress-bar" id="progress-bar"></div>
 </div>
 <div class="radial-type">
   <svg
@@ -140,8 +149,11 @@ class MuxUploaderElement extends HTMLElement {
     this.errorMessage = this.shadowRoot?.getElementById('error-message');
 
     this.setupFilePickerButton();
-    this.setupDragAndDrop();
     this.setDefaultType();
+
+    if (this.getAttribute('draggable') === '') {
+      this.setupDragAndDrop();
+    }
   }
 
   setDefaultType() {
@@ -198,14 +210,21 @@ class MuxUploaderElement extends HTMLElement {
     });
   }
 
-  // to-do: set progress regardless of visual style of progress bar
   setProgress(percent: number) {
-    const radius = Number(this.svgCircle?.getAttribute('r'));
-    const circumference = radius * 2 * Math.PI;
-    const offset = circumference - (percent / 100) * circumference;
+    if (this.getAttribute('type') === TYPES.BAR && this.progressBar) {
+      this.progressBar.style.width = `${percent}%`;
+    }
 
-    if (this.svgCircle) {
+    if (this.getAttribute('type') === TYPES.RADIAL && this.svgCircle) {
+      const radius = Number(this.svgCircle?.getAttribute('r'));
+      const circumference = radius * 2 * Math.PI;
+      const offset = circumference - (percent / 100) * circumference;
+
       this.svgCircle.style.strokeDashoffset = offset.toString();
+    }
+
+    if (this.uploadStatus) {
+      this.uploadStatus.innerHTML = Math.floor(percent)?.toString();
     }
   }
 
@@ -236,16 +255,7 @@ class MuxUploaderElement extends HTMLElement {
     });
 
     upload.on('progress', (progress) => {
-      if (this.progressBar) {
-        this.progressBar.style.width = `${progress.detail}%`;
-      }
-
-      if (this.uploadStatus) {
-        this.uploadStatus.innerHTML = Math.floor(progress?.detail)?.toString();
-      }
-      if (this.svgCircle) {
-        this.setProgress(progress.detail);
-      }
+      this.setProgress(progress.detail);
     });
 
     upload.on('success', () => {
@@ -267,8 +277,3 @@ if (!globalThis.customElements.get('mux-uploader')) {
 }
 
 export default MuxUploaderElement;
-
-// @keyframes load {
-//   0% { width: 0; }
-//   100% { width: 100%; }
-// }
