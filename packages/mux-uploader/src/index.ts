@@ -96,12 +96,10 @@ template.innerHTML = `
     -moz-transform-origin: 50% 50%;
   }
 </style>
-<div class="drop-zone">
-  <input type="file" />
-  <slot></slot>
-  <p id="upload-instruction">Drop file to upload</p>
-  <button type="button">Upload video</button>
-</div>
+<input type="file" />
+<slot></slot>
+<p id="upload-instruction">Drop file to upload</p>
+<button type="button">Upload video</button>
 <div class="bar-type">
   <div class="progress-bar" id="progress-bar"></div>
 </div>
