@@ -5,7 +5,7 @@ const template = document.createElement('template');
 template.innerHTML = `
 <style>
   :host {
-    font-family: sans-serif;
+    font-family: Arial;
     border: 1px dashed grey;
     background: #f1f5f9;
   }
@@ -41,6 +41,14 @@ template.innerHTML = `
     background: #222222;
   }
 
+  .bar-type {
+    background: #e6e6e6;
+    border-radius: 100px;
+    position: relative;
+    height: 10px;
+    width: 100%;
+  }
+
   .radial-type, .bar-type, .error-message {
     display: none;
   }
@@ -51,6 +59,14 @@ template.innerHTML = `
 
   :host([type="bar"][upload-in-progress]) .bar-type {
     display: block;
+  }
+
+  .progress-bar {
+    box-shadow: 0 10px 40px -10px #fff;
+    border-radius: 100px;
+    background: #000000;
+    height: 10px;
+    width: 0%;
   }
   
   :host([upload-in-progress]) button {
@@ -78,7 +94,7 @@ template.innerHTML = `
 <p>Drag a file here to upload or</p>
 <button type="button">Browse files</button>
 <div class="bar-type">
-  <progress id="progress-bar" value="0" max="100" />
+  <div class="progress-bar" id="progress-bar"/>
 </div>
 <div class="radial-type">
   <svg
@@ -104,6 +120,9 @@ class MuxUploaderElement extends HTMLElement {
   hiddenFileInput: HTMLInputElement | null | undefined;
   filePickerButton: HTMLButtonElement | null | undefined;
   svgCircle: SVGCircleElement | null | undefined;
+  progressBar: HTMLElement | null | undefined;
+  uploadStatus: HTMLElement | null | undefined;
+  errorMessage: HTMLElement | null | undefined;
 
   constructor() {
     super();
@@ -116,6 +135,10 @@ class MuxUploaderElement extends HTMLElement {
     this.hiddenFileInput = this.shadowRoot?.querySelector('input[type="file"]');
     this.filePickerButton = this.shadowRoot?.querySelector('button[type="button"]');
     this.svgCircle = this.shadowRoot?.querySelector('circle');
+    this.progressBar = this.shadowRoot?.getElementById('progress-bar');
+    this.uploadStatus = this.shadowRoot?.getElementById('upload-status');
+    this.errorMessage = this.shadowRoot?.getElementById('error-message');
+
     this.setupFilePickerButton();
     this.setupDragAndDrop();
     this.setDefaultType();
@@ -175,6 +198,7 @@ class MuxUploaderElement extends HTMLElement {
     });
   }
 
+  // to-do: set progress regardless of visual style of progress bar
   setProgress(percent: number) {
     const radius = Number(this.svgCircle?.getAttribute('r'));
     const circumference = radius * 2 * Math.PI;
@@ -187,16 +211,15 @@ class MuxUploaderElement extends HTMLElement {
 
   handleUpload(file: File) {
     const url = this.getAttribute('url');
-    const errorMessage = this.shadowRoot?.getElementById('error-message');
     if (!url) {
-      if (errorMessage) {
-        errorMessage.innerHTML = 'No url attribute specified -- cannot handleUpload';
+      if (this.errorMessage) {
+        this.errorMessage.innerHTML = 'No url attribute specified -- cannot handleUpload';
       }
       throw Error('No url attribute specified -- cannot handleUpload');
     }
 
-    if (errorMessage) {
-      errorMessage.innerHTML = '';
+    if (this.errorMessage) {
+      this.errorMessage.innerHTML = '';
     }
 
     this.setAttribute('upload-in-progress', '');
@@ -207,20 +230,18 @@ class MuxUploaderElement extends HTMLElement {
 
     // subscribe to events
     upload.on('error', (err) => {
-      const errorMessage = this.shadowRoot?.getElementById('error-message');
-      console.log(errorMessage);
-
-      if (errorMessage) {
-        errorMessage.innerHTML = err.detail;
+      if (this.errorMessage) {
+        this.errorMessage.innerHTML = err.detail;
       }
     });
 
     upload.on('progress', (progress) => {
-      const progressBar = this.shadowRoot?.getElementById('progress-bar');
-      const progressStatus = this.shadowRoot?.getElementById('upload-status');
-      progressBar?.setAttribute('value', progress.detail);
-      if (progressStatus) {
-        progressStatus.innerHTML = Math.floor(progress?.detail)?.toString();
+      if (this.progressBar) {
+        this.progressBar.style.width = `${progress.detail}%`;
+      }
+
+      if (this.uploadStatus) {
+        this.uploadStatus.innerHTML = Math.floor(progress?.detail)?.toString();
       }
       if (this.svgCircle) {
         this.setProgress(progress.detail);
@@ -246,3 +267,8 @@ if (!globalThis.customElements.get('mux-uploader')) {
 }
 
 export default MuxUploaderElement;
+
+// @keyframes load {
+//   0% { width: 0; }
+//   100% { width: 100%; }
+// }
