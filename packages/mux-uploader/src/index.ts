@@ -13,7 +13,6 @@ template.innerHTML = `
   }
 
   p {
-    font-size: 32px;
     color: black;
   }
 
@@ -23,7 +22,6 @@ template.innerHTML = `
 
   button {
     cursor: pointer;
-    font-size: 16px;
     line-height: 33px;
     background: #fff;
     border: 1px solid #000000;
