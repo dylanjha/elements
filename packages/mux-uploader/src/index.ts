@@ -26,17 +26,22 @@ template.innerHTML = `
     font-size: 16px;
     line-height: 33px;
     background: #fff;
-    border: 2px solid #222222;
-    color: #222222;
+    border: 1px solid #000000;
+    color: #000000;
     padding: 10px 20px;
-    border-radius: 50px;
+    border-radius: 4px;
     -webkit-transition: all 0.2s ease;
     transition: all 0.2s ease;
   }
 
   button:hover {
     color: #fff;
-    background: #222222;
+    background: #404040;
+  }
+
+  button:active {
+    color: #fff;
+    background: #000000;
   }
 
   .bar-type {
