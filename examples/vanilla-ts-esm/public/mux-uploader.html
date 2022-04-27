@@ -19,8 +19,6 @@
       }
 
       mux-uploader {
-        font-family: Arial;
-
         width: 100%;
         margin: 40px auto;
         display: block;
@@ -37,7 +35,7 @@
   <body>
     <h1>Enter your upload GCS url:</h1>
     <input type="text" class="direct-upload-url" placeholder="https://storage.googleapis.com/..." />
-    <mux-uploader type="bar" showPercentage></mux-uploader>
+    <mux-uploader type="bar" draggable showPercentage></mux-uploader>
     <a href="../">Browse Elements</a>
 
     <script>
