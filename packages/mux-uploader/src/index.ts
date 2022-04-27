@@ -5,64 +5,94 @@ const template = document.createElement('template');
 template.innerHTML = `
 <style>
   :host {
+    font-family: sans-serif;
+    border: 1px dashed grey;
     background: #f1f5f9;
   }
+
   :host([drag-active]) {
-    background: #0369a1;
+    background: #cbd5e1;
   }
+
   p {
     font-size: 48px;
-    color: #facc15;
+    color: black;
   }
+
   input[type="file"] {
     display: none;
   }
+
   button {
-    background: #075985;
-    color: white;
-    padding: 12px 16px;
-    border-radius: 24px;
-    font-size: 24px;
-    border: none;
+    cursor: pointer;
+    font-size: 26px;
+    line-height: 33px;
+    background: #fff;
+    border: 2px solid #222222;
+    color: #222222;
+    padding: 10px 20px;
+    border-radius: 50px;
+    -webkit-transition: all 0.2s ease;
+    transition: all 0.2s ease;
   }
-  .radial-type, .bar-type {
+
+  button:hover {
+    color: #fff;
+    background: #222222;
+  }
+
+  .radial-type, .bar-type, .error-message {
     display: none;
   }
-  :host([type="radial"]) .radial-type {
+
+  :host([type="radial"][upload-in-progress]) .radial-type {
     display: block;
   }
-  :host([type="bar"]) .bar-type {
+
+  :host([type="bar"][upload-in-progress]) .bar-type {
     display: block;
   }
+  
   :host([upload-in-progress]) button {
     display: none;
   }
-  .circle svg circle {
-    stroke:#dcdcdc;
-    stroke-width: 10;
-    stroke-linecap:round;
-    transform:translate(5px,5px);
+
+  svg {
+    overflow: visible
+  }
+
+  circle {
+    stroke: black;
+    stroke-width: 6;
     fill: transparent;
+  
+    transition: 0.35s stroke-dashoffset;
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+    -webkit-transform-origin: 50% 50%;
+    -moz-transform-origin: 50% 50%;
   }
 </style>
 <input type="file" />
 <slot></slot>
-<button type="button">Pick a video file</button>
+<p>Drag a file here to upload or</p>
+<button type="button">Browse files</button>
 <div class="bar-type">
   <progress id="progress-bar" value="0" max="100" />
 </div>
 <div class="radial-type">
-  <div class="circle">
-    <svg>
-      <circle
-        r="58"
-        cx="60"
-        cy="60"
-      />
-    <svg>
-  </div>
+  <svg
+    width="120"
+    height="120">
+    <circle
+      r="58"
+      cx="60"
+      cy="60"
+    />
+  <svg>
 </div>
 <p id="upload-status"></p>
+<p id="error-message"></p>
 `;
 
 const TYPES = {
@@ -73,7 +103,7 @@ const TYPES = {
 class MuxUploaderElement extends HTMLElement {
   hiddenFileInput: HTMLInputElement | null | undefined;
   filePickerButton: HTMLButtonElement | null | undefined;
-  svgCircle: HTMLElement | null | undefined;
+  svgCircle: SVGCircleElement | null | undefined;
 
   constructor() {
     super();
@@ -85,6 +115,7 @@ class MuxUploaderElement extends HTMLElement {
   connectedCallback() {
     this.hiddenFileInput = this.shadowRoot?.querySelector('input[type="file"]');
     this.filePickerButton = this.shadowRoot?.querySelector('button[type="button"]');
+    this.svgCircle = this.shadowRoot?.querySelector('circle');
     this.setupFilePickerButton();
     this.setupDragAndDrop();
     this.setDefaultType();
@@ -96,7 +127,13 @@ class MuxUploaderElement extends HTMLElement {
       this.setAttribute('type', TYPES.BAR);
     }
     if (this.getAttribute('type') === TYPES.RADIAL) {
-      this.svgCircle = this.shadowRoot?.querySelector('.circle svg circle');
+      const radius = Number(this.svgCircle?.getAttribute('r'));
+      const circumference = radius * 2 * Math.PI;
+
+      if (this.svgCircle) {
+        this.svgCircle.style.strokeDasharray = `${circumference} ${circumference}`;
+        this.svgCircle.style.strokeDashoffset = `${circumference}`;
+      }
     }
   }
 
@@ -134,16 +171,34 @@ class MuxUploaderElement extends HTMLElement {
       //@ts-ignore
       const { files } = dataTransfer;
       const file = files[0];
-      const uploadUrl = this.getAttribute('url');
       this.handleUpload(file);
     });
   }
 
+  setProgress(percent: number) {
+    const radius = Number(this.svgCircle?.getAttribute('r'));
+    const circumference = radius * 2 * Math.PI;
+    const offset = circumference - (percent / 100) * circumference;
+
+    if (this.svgCircle) {
+      this.svgCircle.style.strokeDashoffset = offset.toString();
+    }
+  }
+
   handleUpload(file: File) {
     const url = this.getAttribute('url');
+    const errorMessage = this.shadowRoot?.getElementById('error-message');
     if (!url) {
+      if (errorMessage) {
+        errorMessage.innerHTML = 'No url attribute specified -- cannot handleUpload';
+      }
       throw Error('No url attribute specified -- cannot handleUpload');
     }
+
+    if (errorMessage) {
+      errorMessage.innerHTML = '';
+    }
+
     this.setAttribute('upload-in-progress', '');
     const upload = UpChunk.createUpload({
       endpoint: url,
@@ -152,11 +207,15 @@ class MuxUploaderElement extends HTMLElement {
 
     // subscribe to events
     upload.on('error', (err) => {
-      console.error('💥 🙀', err.detail);
+      const errorMessage = this.shadowRoot?.getElementById('error-message');
+      console.log(errorMessage);
+
+      if (errorMessage) {
+        errorMessage.innerHTML = err.detail;
+      }
     });
 
     upload.on('progress', (progress) => {
-      console.log(`So far we've uploaded ${progress.detail}% of this file.`);
       const progressBar = this.shadowRoot?.getElementById('progress-bar');
       const progressStatus = this.shadowRoot?.getElementById('upload-status');
       progressBar?.setAttribute('value', progress.detail);
@@ -164,13 +223,12 @@ class MuxUploaderElement extends HTMLElement {
         progressStatus.innerHTML = Math.floor(progress?.detail)?.toString();
       }
       if (this.svgCircle) {
-        /* set the svg styles to show the progress */
-        this.svgCircle.style.strokeDasharray = '10 20';
+        this.setProgress(progress.detail);
       }
     });
 
     upload.on('success', () => {
-      console.log("Wrap it up, we're done here. 👋");
+      console.log("Wrap it up, we're almost done here. 👋");
     });
   }
 }
