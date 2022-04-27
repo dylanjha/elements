@@ -4,7 +4,7 @@ const template = document.createElement('template');
 
 template.innerHTML = `
 <style>
-  :host([draggable]) #upload-instruction{
+  :host([draggable]), :host(:not([upload-in-progress])) #upload-instruction{
     display: block;
   }
 
@@ -81,7 +81,7 @@ template.innerHTML = `
     width: 0%;
   }
   
-  :host([upload-in-progress]) button {
+  :host([upload-in-progress]) button, #upload-instruction {
     display: none;
   }
 
@@ -105,6 +105,7 @@ template.innerHTML = `
 <slot></slot>
 <p id="upload-instruction">Drop file to upload</p>
 <button type="button">Upload video</button>
+<p id="upload-status"></p>
 <div class="bar-type">
   <div class="progress-bar" id="progress-bar"></div>
 </div>
@@ -119,7 +120,6 @@ template.innerHTML = `
     />
   <svg>
 </div>
-<p id="upload-status"></p>
 <p id="error-message"></p>
 `;
 
@@ -227,7 +227,7 @@ class MuxUploaderElement extends HTMLElement {
     }
 
     if (this.uploadStatus) {
-      this.uploadStatus.innerHTML = Math.floor(percent)?.toString();
+      this.uploadStatus.innerHTML = `${Math.floor(percent)?.toString()}%`;
     }
   }
 
