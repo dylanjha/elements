@@ -4,10 +4,8 @@ const template = document.createElement('template');
 
 template.innerHTML = `
 <style>
-  :host {
-    font-family: sans-serif;
-    border: 1px dashed grey;
-    background: #f1f5f9;
+  :host([draggable]), :host(:not([upload-in-progress])) #upload-instruction{
+    display: block;
   }
 
   :host([drag-active]) {
@@ -15,7 +13,6 @@ template.innerHTML = `
   }
 
   p {
-    font-size: 48px;
     color: black;
   }
 
@@ -25,25 +22,46 @@ template.innerHTML = `
 
   button {
     cursor: pointer;
-    font-size: 26px;
     line-height: 33px;
     background: #fff;
-    border: 2px solid #222222;
-    color: #222222;
+    border: 1px solid #000000;
+    color: #000000;
     padding: 10px 20px;
-    border-radius: 50px;
+    border-radius: 4px;
     -webkit-transition: all 0.2s ease;
     transition: all 0.2s ease;
   }
 
   button:hover {
     color: #fff;
-    background: #222222;
+    background: #404040;
   }
 
-  .radial-type, .bar-type, .error-message {
+  button:active {
+    color: #fff;
+    background: #000000;
+  }
+
+  .bar-type {
+    background: #e6e6e6;
+    border-radius: 100px;
+    position: relative;
+    height: 10px;
+    width: 100%;
+  }
+
+  .radial-type, .bar-type, #upload-instruction {
     display: none;
   }
+
+  #upload-status {
+    opacity: 0;
+  }
+
+  :host([showPercentage][upload-in-progress]) #upload-status {
+    opacity: 1; 
+  }
+
 
   :host([type="radial"][upload-in-progress]) .radial-type {
     display: block;
@@ -52,8 +70,16 @@ template.innerHTML = `
   :host([type="bar"][upload-in-progress]) .bar-type {
     display: block;
   }
+
+  .progress-bar {
+    box-shadow: 0 10px 40px -10px #fff;
+    border-radius: 100px;
+    background: #000000;
+    height: 10px;
+    width: 0%;
+  }
   
-  :host([upload-in-progress]) button {
+  :host([upload-in-progress]) button, #upload-instruction {
     display: none;
   }
 
@@ -75,10 +101,11 @@ template.innerHTML = `
 </style>
 <input type="file" />
 <slot></slot>
-<p>Drag a file here to upload or</p>
-<button type="button">Browse files</button>
+<p id="upload-instruction">Drop file to upload</p>
+<button type="button">Upload video</button>
+<p id="upload-status"></p>
 <div class="bar-type">
-  <progress id="progress-bar" value="0" max="100" />
+  <div class="progress-bar" id="progress-bar"></div>
 </div>
 <div class="radial-type">
   <svg
@@ -91,7 +118,6 @@ template.innerHTML = `
     />
   <svg>
 </div>
-<p id="upload-status"></p>
 <p id="error-message"></p>
 `;
 
@@ -104,6 +130,9 @@ class MuxUploaderElement extends HTMLElement {
   hiddenFileInput: HTMLInputElement | null | undefined;
   filePickerButton: HTMLButtonElement | null | undefined;
   svgCircle: SVGCircleElement | null | undefined;
+  progressBar: HTMLElement | null | undefined;
+  uploadStatus: HTMLElement | null | undefined;
+  errorMessage: HTMLElement | null | undefined;
 
   constructor() {
     super();
@@ -116,9 +145,16 @@ class MuxUploaderElement extends HTMLElement {
     this.hiddenFileInput = this.shadowRoot?.querySelector('input[type="file"]');
     this.filePickerButton = this.shadowRoot?.querySelector('button[type="button"]');
     this.svgCircle = this.shadowRoot?.querySelector('circle');
+    this.progressBar = this.shadowRoot?.getElementById('progress-bar');
+    this.uploadStatus = this.shadowRoot?.getElementById('upload-status');
+    this.errorMessage = this.shadowRoot?.getElementById('error-message');
+
     this.setupFilePickerButton();
-    this.setupDragAndDrop();
     this.setDefaultType();
+
+    if (this.getAttribute('draggable') === '') {
+      this.setupDragAndDrop();
+    }
   }
 
   setDefaultType() {
@@ -176,27 +212,34 @@ class MuxUploaderElement extends HTMLElement {
   }
 
   setProgress(percent: number) {
-    const radius = Number(this.svgCircle?.getAttribute('r'));
-    const circumference = radius * 2 * Math.PI;
-    const offset = circumference - (percent / 100) * circumference;
+    if (this.getAttribute('type') === TYPES.BAR && this.progressBar) {
+      this.progressBar.style.width = `${percent}%`;
+    }
 
-    if (this.svgCircle) {
+    if (this.getAttribute('type') === TYPES.RADIAL && this.svgCircle) {
+      const radius = Number(this.svgCircle?.getAttribute('r'));
+      const circumference = radius * 2 * Math.PI;
+      const offset = circumference - (percent / 100) * circumference;
+
       this.svgCircle.style.strokeDashoffset = offset.toString();
+    }
+
+    if (this.uploadStatus) {
+      this.uploadStatus.innerHTML = `${Math.floor(percent)?.toString()}%`;
     }
   }
 
   handleUpload(file: File) {
     const url = this.getAttribute('url');
-    const errorMessage = this.shadowRoot?.getElementById('error-message');
     if (!url) {
-      if (errorMessage) {
-        errorMessage.innerHTML = 'No url attribute specified -- cannot handleUpload';
+      if (this.errorMessage) {
+        this.errorMessage.innerHTML = 'No url attribute specified -- cannot handleUpload';
       }
       throw Error('No url attribute specified -- cannot handleUpload');
     }
 
-    if (errorMessage) {
-      errorMessage.innerHTML = '';
+    if (this.errorMessage) {
+      this.errorMessage.innerHTML = '';
     }
 
     this.setAttribute('upload-in-progress', '');
@@ -207,24 +250,13 @@ class MuxUploaderElement extends HTMLElement {
 
     // subscribe to events
     upload.on('error', (err) => {
-      const errorMessage = this.shadowRoot?.getElementById('error-message');
-      console.log(errorMessage);
-
-      if (errorMessage) {
-        errorMessage.innerHTML = err.detail;
+      if (this.errorMessage) {
+        this.errorMessage.innerHTML = err.detail;
       }
     });
 
     upload.on('progress', (progress) => {
-      const progressBar = this.shadowRoot?.getElementById('progress-bar');
-      const progressStatus = this.shadowRoot?.getElementById('upload-status');
-      progressBar?.setAttribute('value', progress.detail);
-      if (progressStatus) {
-        progressStatus.innerHTML = Math.floor(progress?.detail)?.toString();
-      }
-      if (this.svgCircle) {
-        this.setProgress(progress.detail);
-      }
+      this.setProgress(progress.detail);
     });
 
     upload.on('success', () => {
