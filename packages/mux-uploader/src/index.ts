@@ -200,7 +200,7 @@ class MuxUploaderElement extends HTMLElement {
 
     if (this.getAttribute('type') === TYPES.RADIAL) {
       const radius = Number(this.svgCircle?.getAttribute('r'));
-      const circumference = (radius * 2 * Math.PI) / 2;
+      const circumference = radius * 2 * Math.PI;
 
       if (this.svgCircle) {
         /* strokeDasharray is the size of dashes used to draw the circle with the size of gaps in between.
