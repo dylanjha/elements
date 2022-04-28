@@ -206,10 +206,10 @@ class MuxUploaderElement extends HTMLElement {
         /* strokeDasharray is the size of dashes used to draw the circle with the size of gaps in between.
            If the dash number is the same as the gap number, no gap is visible: a full circle.
            strokeDashoffset defines where along our circle the dashes (in our case, a dash as long as the 
-          circumference of our circle) begins. The larger the offset, the farther into the circle you're
-          starting the "dash". In the beginning, offset is the same as the circumference. In other words,
-          the dash starts at the end so we don't see the full circle. When the percentage is 100%, offset is 0
-          meaning the dash starts at the beginning. In other words, we can see the full circle.
+           circumference of our circle) begins. The larger the offset, the farther into the circle you're
+           starting the "dash". In the beginning, offset is the same as the circumference. In other words,
+           the dash starts at the end so we don't see the full circle. When the percentage is 100%, offset is 0
+           meaning the dash starts at the beginning. In other words, we can see the full circle.
         */
         this.svgCircle.style.strokeDasharray = `${circumference} ${circumference}`;
         this.svgCircle.style.strokeDashoffset = `${circumference}`;
