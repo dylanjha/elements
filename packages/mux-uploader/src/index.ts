@@ -226,8 +226,7 @@ class MuxUploaderElement extends HTMLElement {
   handleSlots() {
     if (this.filePickerButton) this.setupFilePickerButton(this.filePickerButton);
 
-    this.shadowRoot?.addEventListener('slotchange', () => {
-      console.log('slot change');
+    this.shadowRoot?.querySelector('slot[name=custom-button]')?.addEventListener('slotchange', () => {
       this.filePickerButton = this.shadowRoot?.querySelector('slot[name=custom-button]');
       if (this.filePickerButton) this.setupFilePickerButton(this.filePickerButton);
     });
