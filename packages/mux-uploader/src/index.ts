@@ -19,6 +19,8 @@ button {
   border-radius: 4px;
   -webkit-transition: all 0.2s ease;
   transition: all 0.2s ease;
+  font-size: inherit;
+  font-family: inherit;
 }
 
 button:hover {
@@ -31,42 +33,43 @@ button:active {
   background: #000000;
 }
 
+:host([round]) button {
+  border-radius: 40px;
+}
+
 .bar-type {
   background: #e6e6e6;
   border-radius: 100px;
   position: relative;
-  height: 10px;
+  height: 4px;
   width: 100%;
 }
 
-.radial-type, .bar-type {
+.radial-type, .bar-type, .upload-percentage, .retry-message {
   display: none;
 }
 
-#upload-instruction {
+::slotted(p) {
   display: none;
 }
 
-:host([draggable]) #upload-instruction{
+.upload-instruction {
+  display: none;
+}
+
+.retry-message {
+  color: #e22c3e;
+  text-decoration-line: underline;
+  cursor: pointer;
+}
+
+:host([draggable]) .upload-instruction{
   display: block;
 }
 
 :host([drag-active]) {
   background: #cbd5e1;
 }
-
-#upload-status {
-  opacity: 0;
-}
-
-/* Regardless if the user wants to visually show the upload percentage
-   this number needs to be available to a screen reader.
-   Using opacity does not remove this element from the a11y tree. */
-
-:host([showPercentage][upload-in-progress]) #upload-status {
-  opacity: 1; 
-}
-
 
 :host([type="radial"][upload-in-progress]) .radial-type {
   display: block;
@@ -76,15 +79,44 @@ button:active {
   display: block;
 }
 
+:host([upload-in-progress]) .upload-percentage {
+  display: block;
+}
+
+:host([upload-in-progress]) ::slotted(p) {
+  display: block;
+}
+
 :host([type="bar"][upload-error]) .progress-bar {
   background: #e22c3e;
+}
+
+:host([type="bar"][upload-error]) .status-message {
+  color: #e22c3e;
+}
+
+:host([upload-error]) .upload-percentage {
+  display: none;
+}
+
+:host([upload-error]) .retry-message {
+  display: block;
+}
+
+:host([upload-error]) ::slotted(p) {
+  display: none;
+}
+
+.upload-percentage {
+  font-size: 42px;
+  margin-bottom: 16px;
 }
 
 .progress-bar {
   box-shadow: 0 10px 40px -10px #fff;
   border-radius: 100px;
   background: #000000;
-  height: 10px;
+  height: 4px;
   width: 0%;
 }
 
@@ -92,7 +124,11 @@ button:active {
   display: none;
 }
 
-:host([upload-in-progress]) #upload-instruction {
+:host([upload-in-progress]) ::slotted(button) {
+  display: none;
+}
+
+:host([upload-in-progress]) .upload-instruction {
   display: none;
 }
 
@@ -117,12 +153,13 @@ template.innerHTML = `
   ${styles}
 </style>
 
-<p id="upload-instruction">Drop file to upload</p>
+<p class="upload-instruction" id="upload-instruction">Drop file to upload</p>
 
 <input type="file" />
 <slot name="custom-button"><button type="button">Upload video</button></slot>
 
-<p id="upload-percentage"></p>
+<!-- TO-DO: when slot is filled, user to has select file twice to upload -->
+<slot name="custom-progress"><p class="upload-percentage" id="upload-percentage"></p></slot>
 
 <div class="bar-type">
   <div class="progress-bar" id="progress-bar"></div>
@@ -141,7 +178,8 @@ template.innerHTML = `
   <svg>
 </div>
 
-<p id="status-message"></p>
+<p class="status-message" id="status-message"></p>
+<span class="retry-message" id="retry-message">Try again</span>
 `;
 
 const TYPES = {
@@ -156,6 +194,7 @@ class MuxUploaderElement extends HTMLElement {
   progressBar: HTMLElement | null | undefined;
   uploadPercentage: HTMLElement | null | undefined;
   statusMessage: HTMLElement | null | undefined;
+  retryMessage: HTMLElement | null | undefined;
 
   constructor() {
     super();
@@ -170,10 +209,12 @@ class MuxUploaderElement extends HTMLElement {
     this.progressBar = this.shadowRoot?.getElementById('progress-bar');
     this.uploadPercentage = this.shadowRoot?.getElementById('upload-percentage');
     this.statusMessage = this.shadowRoot?.getElementById('status-message');
+    this.retryMessage = this.shadowRoot?.getElementById('retry-message');
   }
 
   connectedCallback() {
     this.setDefaultType();
+    this.setupRetry();
     this.handleSlots();
 
     if (this.getAttribute('draggable') === '') {
@@ -185,7 +226,7 @@ class MuxUploaderElement extends HTMLElement {
   handleSlots() {
     if (this.filePickerButton) this.setupFilePickerButton(this.filePickerButton);
 
-    this.shadowRoot?.addEventListener('slotchange', () => {
+    this.shadowRoot?.querySelector('slot[name=custom-button]')?.addEventListener('slotchange', () => {
       this.filePickerButton = this.shadowRoot?.querySelector('slot[name=custom-button]');
       if (this.filePickerButton) this.setupFilePickerButton(this.filePickerButton);
     });
@@ -217,6 +258,21 @@ class MuxUploaderElement extends HTMLElement {
     }
   }
 
+  setupRetry() {
+    this.retryMessage?.addEventListener('click', () => {
+      this.removeAttribute('upload-error');
+      this.removeAttribute('upload-in-progress');
+      // this.statusMessage?.innerHTML = '';
+      // TO-DO: Reset everything. Util function? Probs store initial state...
+      // All error states gone, all progress gone in text and visually, drag and drop etc.
+    });
+  }
+
+  /* TO-DO:
+    Behaves strangely (file explorer opens twice or file selection fails) in multiple instances:
+      - When slots beyond the first are filled
+      - When attempting file selection without drag after upload error
+  */
   setupFilePickerButton(button: Element) {
     button.addEventListener('click', () => {
       this.hiddenFileInput?.click();
@@ -264,25 +320,24 @@ class MuxUploaderElement extends HTMLElement {
   }
 
   setProgress(percent: number) {
+    if (this.uploadPercentage) this.uploadPercentage.innerHTML = `${Math.floor(percent)?.toString()}%`;
+
     switch (this.getAttribute('type')) {
       case TYPES.BAR: {
         if (this.progressBar) this.progressBar.style.width = `${percent}%`;
       }
-      case TYPES.RADIAL:
-        {
-          if (this.svgCircle) {
-            const radius = Number(this.svgCircle?.getAttribute('r'));
-            const circumference = radius * 2 * Math.PI;
-            /* The closer the upload percentage gets to 100%, the closer offset gets to 0.
+      case TYPES.RADIAL: {
+        if (this.svgCircle) {
+          const radius = Number(this.svgCircle?.getAttribute('r'));
+          const circumference = radius * 2 * Math.PI;
+          /* The closer the upload percentage gets to 100%, the closer offset gets to 0.
              The closer offset gets to 0, the more we can see the circumference of our circle.
           */
-            const offset = circumference - (percent / 100) * circumference;
+          const offset = circumference - (percent / 100) * circumference;
 
-            this.svgCircle.style.strokeDashoffset = offset.toString();
-          }
+          this.svgCircle.style.strokeDashoffset = offset.toString();
         }
-
-        if (this.uploadPercentage) this.uploadPercentage.innerHTML = `${Math.floor(percent)?.toString()}%`;
+      }
     }
   }
 
@@ -290,14 +345,15 @@ class MuxUploaderElement extends HTMLElement {
     const url = this.getAttribute('url');
 
     if (!url) {
-      if (this.statusMessage) {
-        this.statusMessage.innerHTML = 'No url attribute specified -- cannot handleUpload';
-      }
+      if (this.statusMessage) this.statusMessage.innerHTML = 'No url attribute specified -- cannot handleUpload';
       throw Error('No url attribute specified -- cannot handleUpload');
+    } else {
+      if (this.statusMessage) this.statusMessage.innerHTML = '';
     }
 
     // Clear previous error message if an upload is reattempted
     if (this.statusMessage) {
+      this.removeAttribute('upload-error');
       this.statusMessage.innerHTML = '';
     }
 
@@ -312,8 +368,9 @@ class MuxUploaderElement extends HTMLElement {
     upload.on('error', (err) => {
       this.setAttribute('upload-error', '');
 
-      if (this.statusMessage) {
-        this.statusMessage.innerHTML = err.detail;
+      if (this.statusMessage && this.uploadPercentage) {
+        console.log('error');
+        this.statusMessage.innerHTML = err.detail.message;
       }
     });
 
