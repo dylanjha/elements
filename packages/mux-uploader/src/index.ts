@@ -1,6 +1,12 @@
 import * as UpChunk from '@mux/upchunk';
 
 const styles = `
+:host {
+  font-family: var(--uploader-font-family, Arial);
+  font-size: var(--uploader-font-size, 16px);
+  background-color: var(--uploader-background-color, #fff);
+}
+
 p {
   color: black;
 }
@@ -12,29 +18,25 @@ input[type="file"] {
 button {
   cursor: pointer;
   line-height: 16px;
-  background: #fff;
+  background: var(--button-background-color, #fff);
   border: 1px solid #000000;
   color: #000000;
   padding: 16px 24px;
-  border-radius: 4px;
+  border-radius: var(--button-border-radius, 4px);
   -webkit-transition: all 0.2s ease;
   transition: all 0.2s ease;
-  font-size: inherit;
   font-family: inherit;
+  font-size: inherit;
 }
 
 button:hover {
-  color: #fff;
-  background: #404040;
+  color: var(--button-hover-text, #fff);
+  background: var(--button-hover-background, #404040);
 }
 
 button:active {
-  color: #fff;
-  background: #000000;
-}
-
-:host([round]) button {
-  border-radius: 40px;
+  color: var(--button-active-text, #fff);
+  background: var(--button-active-background, #000000);
 }
 
 .bar-type {
@@ -115,7 +117,7 @@ button:active {
 .progress-bar {
   box-shadow: 0 10px 40px -10px #fff;
   border-radius: 100px;
-  background: #000000;
+  background: var(--progress-bar-fill-color, #000000);
   height: 4px;
   width: 0%;
 }
@@ -133,7 +135,7 @@ button:active {
 }
 
 circle {
-  stroke: black;
+  stroke: var(--progress-radial-fill-color, black);
   stroke-width: 6;  /* Thickness of the circle */
   fill: transparent; /* Make inside of the circle see-through */
 
@@ -157,9 +159,7 @@ template.innerHTML = `
 
 <input type="file" />
 <slot name="custom-button"><button type="button">Upload video</button></slot>
-
-<!-- TO-DO: when slot is filled, user to has select file twice to upload -->
-<slot name="custom-progress"><p class="upload-percentage" id="upload-percentage"></p></slot>
+<slot name="custom-progress"><p aria-live="assertive" role="progressbar" class="upload-percentage" id="upload-percentage"></p></slot>
 
 <div class="bar-type">
   <div class="progress-bar" id="progress-bar"></div>
@@ -214,23 +214,29 @@ class MuxUploaderElement extends HTMLElement {
 
   connectedCallback() {
     this.setDefaultType();
+    this.setupFilePickerButton();
     this.setupRetry();
-    this.handleSlots();
 
     if (this.getAttribute('draggable') === '') {
       this.setupDragAndDrop();
     }
   }
 
-  // Might need a better way to map events to slotted elements especially in the case of multiple
-  handleSlots() {
-    if (this.filePickerButton) this.setupFilePickerButton(this.filePickerButton);
-
-    this.shadowRoot?.querySelector('slot[name=custom-button]')?.addEventListener('slotchange', () => {
-      this.filePickerButton = this.shadowRoot?.querySelector('slot[name=custom-button]');
-      if (this.filePickerButton) this.setupFilePickerButton(this.filePickerButton);
-    });
+  get radius() {
+    return Number(this.svgCircle?.getAttribute('r'));
   }
+
+  get circumference() {
+    return this.radius * 2 * Math.PI;
+  }
+
+  /* TO-DO: Apparently Chrome and Firefox do not allow changing an indexed property on FileList...
+     Thought I could work around it by setting up a formal setter due this error:
+     "Failed to set an indexed property on 'FileList': Indexed property setter is not supported."
+  */
+  // set file(value: any) {
+  //   if (this.hiddenFileInput && this.hiddenFileInput.files) this.hiddenFileInput.files[0] = value;
+  // }
 
   setDefaultType() {
     const currentType = this.getAttribute('type');
@@ -240,9 +246,6 @@ class MuxUploaderElement extends HTMLElement {
     }
 
     if (this.getAttribute('type') === TYPES.RADIAL) {
-      const radius = Number(this.svgCircle?.getAttribute('r'));
-      const circumference = radius * 2 * Math.PI;
-
       if (this.svgCircle) {
         /* strokeDasharray is the size of dashes used to draw the circle with the size of gaps in between.
            If the dash number is the same as the gap number, no gap is visible: a full circle.
@@ -252,8 +255,8 @@ class MuxUploaderElement extends HTMLElement {
            dash starts at the end so we don't see the full circle. Instead we see a gap the size of the circle. 
            When the percentage is 100%, offset is 0 meaning the dash starts at the beginning so we can see the circle.
         */
-        this.svgCircle.style.strokeDasharray = `${circumference} ${circumference}`;
-        this.svgCircle.style.strokeDashoffset = `${circumference}`;
+        this.svgCircle.style.strokeDasharray = `${this.circumference} ${this.circumference}`;
+        this.svgCircle.style.strokeDashoffset = `${this.circumference}`;
       }
     }
   }
@@ -262,24 +265,29 @@ class MuxUploaderElement extends HTMLElement {
     this.retryMessage?.addEventListener('click', () => {
       this.removeAttribute('upload-error');
       this.removeAttribute('upload-in-progress');
-      // this.statusMessage?.innerHTML = '';
-      // TO-DO: Reset everything. Util function? Probs store initial state...
-      // All error states gone, all progress gone in text and visually, drag and drop etc.
+      if (this.statusMessage) this.statusMessage.innerHTML = '';
+      if (this.uploadPercentage) this.uploadPercentage.innerHTML = '';
     });
   }
 
-  /* TO-DO:
-    Behaves strangely (file explorer opens twice or file selection fails) in multiple instances:
-      - When slots beyond the first are filled
-      - When attempting file selection without drag after upload error
-  */
-  setupFilePickerButton(button: Element) {
-    button.addEventListener('click', () => {
+  setupFilePickerButton() {
+    this.shadowRoot?.querySelector('slot[name=custom-button]')?.addEventListener('slotchange', () => {
+      this.filePickerButton = this.shadowRoot?.querySelector('slot[name=custom-button]');
+    });
+
+    this.filePickerButton?.addEventListener('click', () => {
+      // TO-DO: Allows user to reattempt uploading the same file after an error.
+      // if (this.hiddenFileInput?.files && this.hiddenFileInput?.files[0]) {
+      // @ts-ignore
+      // this.file = '';
+      // }
+
       this.hiddenFileInput?.click();
     });
 
-    this.hiddenFileInput?.addEventListener('change', (evt) => {
+    this.hiddenFileInput?.addEventListener('change', () => {
       const file = this.hiddenFileInput?.files && this.hiddenFileInput?.files[0];
+
       if (file) {
         this.handleUpload(file);
       }
@@ -328,12 +336,10 @@ class MuxUploaderElement extends HTMLElement {
       }
       case TYPES.RADIAL: {
         if (this.svgCircle) {
-          const radius = Number(this.svgCircle?.getAttribute('r'));
-          const circumference = radius * 2 * Math.PI;
           /* The closer the upload percentage gets to 100%, the closer offset gets to 0.
              The closer offset gets to 0, the more we can see the circumference of our circle.
           */
-          const offset = circumference - (percent / 100) * circumference;
+          const offset = this.circumference - (percent / 100) * this.circumference;
 
           this.svgCircle.style.strokeDashoffset = offset.toString();
         }
@@ -369,9 +375,9 @@ class MuxUploaderElement extends HTMLElement {
       this.setAttribute('upload-error', '');
 
       if (this.statusMessage && this.uploadPercentage) {
-        console.log('error');
         this.statusMessage.innerHTML = err.detail.message;
       }
+      throw Error(err.detail.message);
     });
 
     upload.on('progress', (progress) => {
