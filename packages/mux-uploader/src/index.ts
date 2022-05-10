@@ -4,7 +4,29 @@ const styles = `
 :host {
   font-family: var(--uploader-font-family, Arial);
   font-size: var(--uploader-font-size, 16px);
-  background-color: var(--uploader-background-color, #fff);
+  background-color: var(--uploader-background-color, inherit);
+}
+
+.overlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  z-index: -1;
+}
+
+.dropzone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  z-index: 1;
 }
 
 p {
@@ -27,6 +49,8 @@ button {
   transition: all 0.2s ease;
   font-family: inherit;
   font-size: inherit;
+  z-index: 10;
+  position: relative;
 }
 
 button:hover {
@@ -47,7 +71,7 @@ button:active {
   width: 100%;
 }
 
-.radial-type, .bar-type, .upload-percentage, .retry-message {
+.radial-type, .bar-type, .upload-status, .retry-message, .text-container {
   display: none;
 }
 
@@ -65,24 +89,38 @@ button:active {
   cursor: pointer;
 }
 
-:host([draggable]) .upload-instruction{
-  display: block;
+.text-container {
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  padding-bottom: 16px;
 }
 
-:host([drag-active]) {
-  background: #cbd5e1;
+:host([draggable]) .upload-instruction{
+  display: block;
+  z-index: 10;
+  position: relative;
 }
+
+/*:host([drag-active]) {
+  background: #cbd5e1;
+}*/
 
 :host([type="radial"][upload-in-progress]) .radial-type {
   display: block;
+  z-index: 10;
+  position: relative;
 }
 
 :host([type="bar"][upload-in-progress]) .bar-type {
   display: block;
+  z-index: 10;
+  position: relative;
 }
 
-:host([upload-in-progress]) .upload-percentage {
+:host([upload-in-progress]) .upload-status {
   display: block;
+  z-index: 10;
+  position: relative;
 }
 
 :host([upload-in-progress]) ::slotted(p) {
@@ -97,19 +135,31 @@ button:active {
   color: #e22c3e;
 }
 
-:host([upload-error]) .upload-percentage {
+:host([type="radial"][upload-error]) .status-message {
+  color: #e22c3e;
+  z-index: 10;
+  position: relative;
+}
+
+:host([upload-error]) .upload-status {
   display: none;
 }
 
 :host([upload-error]) .retry-message {
-  display: block;
+  display: inline-block;
+}
+
+:host([upload-error]) .text-container {
+  display: flex;
+  z-index: 10;
+  position: relative;
 }
 
 :host([upload-error]) ::slotted(p) {
   display: none;
 }
 
-.upload-percentage {
+.upload-status {
   font-size: 42px;
   margin-bottom: 16px;
 }
@@ -157,9 +207,14 @@ template.innerHTML = `
 
 <p class="upload-instruction" id="upload-instruction">Drop file to upload</p>
 
+<div class=text-container>
+  <span class="status-message" id="status-message"></span>
+  <span class="retry-message" id="retry-message">Try again</span>
+</div>
+
 <input type="file" />
 <slot name="custom-button"><button type="button">Upload video</button></slot>
-<slot name="custom-progress"><p aria-live="assertive" role="progressbar" class="upload-percentage" id="upload-percentage"></p></slot>
+<slot name="custom-progress"><p class="upload-status" id="upload-status"></p></slot>
 
 <div class="bar-type">
   <div class="progress-bar" id="progress-bar"></div>
@@ -178,8 +233,8 @@ template.innerHTML = `
   <svg>
 </div>
 
-<p class="status-message" id="status-message"></p>
-<span class="retry-message" id="retry-message">Try again</span>
+<div class="dropzone" id="dropzone"></div>
+<div class="overlay" id="overlay"></div>
 `;
 
 const TYPES = {
@@ -195,6 +250,8 @@ class MuxUploaderElement extends HTMLElement {
   uploadPercentage: HTMLElement | null | undefined;
   statusMessage: HTMLElement | null | undefined;
   retryMessage: HTMLElement | null | undefined;
+  dropzone: HTMLElement | null | undefined;
+  overlay: HTMLElement | null | undefined;
 
   constructor() {
     super();
@@ -207,15 +264,21 @@ class MuxUploaderElement extends HTMLElement {
     this.filePickerButton = this.shadowRoot?.querySelector('button');
     this.svgCircle = this.shadowRoot?.querySelector('circle');
     this.progressBar = this.shadowRoot?.getElementById('progress-bar');
-    this.uploadPercentage = this.shadowRoot?.getElementById('upload-percentage');
+    this.uploadPercentage = this.shadowRoot?.getElementById('upload-status');
     this.statusMessage = this.shadowRoot?.getElementById('status-message');
     this.retryMessage = this.shadowRoot?.getElementById('retry-message');
+    this.dropzone = this.shadowRoot?.getElementById('dropzone');
+    this.overlay = this.shadowRoot?.getElementById('overlay');
   }
 
   connectedCallback() {
     this.setDefaultType();
     this.setupFilePickerButton();
     this.setupRetry();
+
+    this.setAttribute('role', 'progressbar');
+    this.setAttribute('aria-label', 'progress bar');
+    this.setAttribute('aria-live', 'polite');
 
     if (this.getAttribute('draggable') === '') {
       this.setupDragAndDrop();
@@ -295,40 +358,52 @@ class MuxUploaderElement extends HTMLElement {
   }
 
   setupDragAndDrop() {
-    /* Most areas on a web page are not valid areas to drop data.
-       Prevent default behaviour for dragenter and dragleave to allow custom drop zone.
-       As for the drop event, default behaviour is to download files dragged into the browser.
-       Prevent default behaviour to allow custom download functionality.
-    */
+    // Needs to attach listeners to a full-screen element in the shadow DOM
+    if (this.dropzone) {
+      this.addEventListener('dragenter', (evt) => {
+        console.log('dragenter');
+        if (this.overlay) {
+          this.overlay.style.zIndex = '20';
+          this.overlay.style.backgroundColor = 'rgba(226, 253, 255, 0.95)';
+        }
+        evt.preventDefault();
+        evt.stopPropagation();
+        // TO-DO: Instead of setting styles every where, consider the below.
+        // this.setAttribute('drag-active', '');
+      });
 
-    this.addEventListener('dragenter', (evt) => {
-      evt.preventDefault();
-      evt.stopPropagation();
-      this.setAttribute('drag-active', '');
-    });
+      this.addEventListener('dragleave', (evt) => {
+        console.log('dragleave');
+        if (this.overlay) {
+          this.overlay.style.zIndex = '-1';
+          this.overlay.style.backgroundColor = '';
+        }
+        this.removeAttribute('drag-active');
+      });
 
-    this.addEventListener('dragleave', (evt) => {
-      this.removeAttribute('drag-active');
-    });
+      this.addEventListener('dragover', (evt) => {
+        console.log('dragover');
+        evt.preventDefault();
+        evt.stopPropagation();
+      });
 
-    this.addEventListener('dragover', (evt) => {
-      evt.preventDefault();
-      evt.stopPropagation();
-    });
-
-    this.addEventListener('drop', (evt) => {
-      evt.preventDefault();
-      evt.stopPropagation();
-      const { dataTransfer } = evt;
-      // @ts-ignore
-      const { files } = dataTransfer;
-      const file = files[0];
-      this.handleUpload(file);
-    });
+      this.addEventListener('drop', (evt) => {
+        console.log('drop');
+        evt.preventDefault();
+        evt.stopPropagation();
+        const { dataTransfer } = evt;
+        // @ts-ignore
+        const { files } = dataTransfer;
+        const file = files[0];
+        this.handleUpload(file);
+      });
+    }
   }
 
   setProgress(percent: number) {
-    if (this.uploadPercentage) this.uploadPercentage.innerHTML = `${Math.floor(percent)?.toString()}%`;
+    if (this.uploadPercentage) this.uploadPercentage.innerHTML = `${Math.floor(percent)}%`;
+    this.setAttribute('aria-valuenow', `${Math.floor(percent)}`);
+    this.setAttribute('aria-valuetext', `${Math.floor(percent)} percent`);
 
     switch (this.getAttribute('type')) {
       case TYPES.BAR: {
@@ -351,10 +426,19 @@ class MuxUploaderElement extends HTMLElement {
     const url = this.getAttribute('url');
 
     if (!url) {
+      if (this.overlay) {
+        this.overlay.style.zIndex = '-1';
+        this.overlay.style.backgroundColor = '';
+      }
       if (this.statusMessage) this.statusMessage.innerHTML = 'No url attribute specified -- cannot handleUpload';
       throw Error('No url attribute specified -- cannot handleUpload');
     } else {
       if (this.statusMessage) this.statusMessage.innerHTML = '';
+    }
+
+    if (this.overlay) {
+      this.overlay.style.zIndex = '-1';
+      this.overlay.style.backgroundColor = '';
     }
 
     // Clear previous error message if an upload is reattempted
@@ -375,7 +459,7 @@ class MuxUploaderElement extends HTMLElement {
       this.setAttribute('upload-error', '');
 
       if (this.statusMessage && this.uploadPercentage) {
-        this.statusMessage.innerHTML = err.detail.message;
+        this.statusMessage.innerHTML = 'An error has occurred';
       }
       throw Error(err.detail.message);
     });
@@ -385,9 +469,7 @@ class MuxUploaderElement extends HTMLElement {
     });
 
     upload.on('success', () => {
-      if (this.statusMessage) {
-        this.statusMessage.innerHTML = 'Upload complete!';
-      }
+      // Open the asset in a new page?
     });
   }
 }
