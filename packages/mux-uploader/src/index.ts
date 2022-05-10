@@ -431,6 +431,11 @@ class MuxUploaderElement extends HTMLElement {
       if (this.statusMessage) this.statusMessage.innerHTML = '';
     }
 
+    if (this.overlay) {
+      this.overlay.style.zIndex = '-1';
+      this.overlay.style.backgroundColor = '';
+    }
+
     // Clear previous error message if an upload is reattempted
     if (this.statusMessage) {
       this.removeAttribute('upload-error');
