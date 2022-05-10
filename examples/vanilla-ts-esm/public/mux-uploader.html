@@ -6,29 +6,106 @@
     <script type="module" src="./dist/mux-uploader.js"></script>
     <style>
       body {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        font-family: Arial;
+        margin: 0;
+        background: #f8f8f8;
       }
 
       .direct-upload-url {
         padding: 8px 12px;
         width: 400px;
-        max-width: 100%;
+      }
+
+      .container {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        font-family: Arial;
+        height: 90vh;
+      }
+
+      header {
+        margin-bottom: 100px;
+        z-index: 10;
+        position: relative;
+      }
+
+      header > h1 {
+        font-size: 5vw;
+        line-height: 6vw;
+        text-align: left;
+        max-width: 45vw;
+        z-index: 10;
+        position: relative;
+      }
+
+      h2 {
+        font-size: 3vw;
+        line-height: 4vw;
+        text-align: left;
+        max-width: 45vw;
+        z-index: 10;
+        position: relative;
+      }
+
+      input {
+        max-width: 45vw;
+        margin-bottom: 50px;
+        z-index: 10;
+        position: relative;
+      }
+
+      main {
+        box-sizing: border-box;
+        padding: 20px;
+        height: 100%;
+        width: 100%;
+      }
+
+      .upload-widget {
+        margin-top: 50px;
+        text-align: center;
+        padding: 30px;
+        border: 1px grey solid;
+        border-radius: 4px;
+        box-shadow: 2px 4px #888888;
+      }
+
+      .button-container {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+
+        /* position: absolute;
+        right: 0;
+        bottom: 0;
+
+        margin-top: 30px;
+        margin-right: 30px;
+        margin-bottom: 100px; */
+      }
+
+      .second-button {
+        align-self: flex-end;
+        margin-top: 20px;
+        z-index: 10;
+        position: relative;
+        /* width: 15%; */
+      }
+
+      footer {
+        box-sizing: border-box;
+        width: 100%;
+        padding: 20px;
+        z-index: 10;
+        position: relative;
       }
       
       mux-uploader {
-        width: 100%;
-        margin: 40px auto;
-        display: block;
-        padding-bottom: 150px;
-        max-width: 400px;
-        padding: 40px;
+        /* --uploader-background-color: rgb(196, 196, 196, 0.95); */
+        align-self: flex-end;
 
-        /* --uploader-background-color: #f5f5f4;
-
-        --progress-bar-fill-color: purple;
+        /* --progress-bar-fill-color: purple;
         --progress-radial-fill-color: pink;
         --button-background-color: rgb(233, 178, 75);
         --button-hover-background: rgb(221, 208, 208);
@@ -43,13 +120,30 @@
     </style>
   </head>
   <body>
-    <h1>Enter your upload GCS url:</h1>
-    <input type="text" class="direct-upload-url" placeholder="https://storage.googleapis.com/..." />
-    <mux-uploader type="bar" draggable>
-      <!-- <button type="button" slot="custom-button">Custom button</button> -->
-      <!-- <p slot="custom-progress">Uploading...</p> -->
-    </mux-uploader>
-    <a href="../">Browse Elements</a>
+    <div class="container">
+      <main>
+          <header>
+            <h1>Add a video.</h1>
+            <h1>Get a shareable link to stream it.</h1>
+          </header>
+          <h2>Enter your upload GCS url:</h1>
+          <input type="text" class="direct-upload-url" placeholder="https://storage.googleapis.com/..." />
+          <!-- <div class="upload-widget"> -->
+            <!-- <mux-uploader type="bar" draggable> -->
+              <!-- <button type="button" slot="custom-button">Custom button</button> -->
+              <!-- <p slot="custom-progress">Uploading...</p> -->
+            <!-- </mux-uploader> -->
+          <!-- </div> -->
+          <div class="button-container">
+            <mux-uploader type="bar" draggable>
+              <!-- <button type="button" slot="custom-button">Custom button</button> -->
+              <!-- <p slot="custom-progress">Uploading...</p> -->
+            </mux-uploader>
+            <button class="second-button">Some other sample button</button>
+          </div>
+      </main>
+    </div>
+    <footer><a href="../">Browse Elements</a></footer>
 
     <script>
       const input = document.querySelector('input[type="text"]');
