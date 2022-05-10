@@ -101,9 +101,9 @@ button:active {
   position: relative;
 }
 
-:host([drag-active]) {
+/*:host([drag-active]) {
   background: #cbd5e1;
-}
+}*/
 
 :host([type="radial"][upload-in-progress]) .radial-type {
   display: block;
@@ -368,7 +368,8 @@ class MuxUploaderElement extends HTMLElement {
         }
         evt.preventDefault();
         evt.stopPropagation();
-        this.setAttribute('drag-active', '');
+        // TO-DO: Instead of setting styles every where, consider the below.
+        // this.setAttribute('drag-active', '');
       });
 
       this.addEventListener('dragleave', (evt) => {
@@ -425,6 +426,10 @@ class MuxUploaderElement extends HTMLElement {
     const url = this.getAttribute('url');
 
     if (!url) {
+      if (this.overlay) {
+        this.overlay.style.zIndex = '-1';
+        this.overlay.style.backgroundColor = '';
+      }
       if (this.statusMessage) this.statusMessage.innerHTML = 'No url attribute specified -- cannot handleUpload';
       throw Error('No url attribute specified -- cannot handleUpload');
     } else {
