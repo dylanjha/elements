@@ -7,8 +7,18 @@ const styles = `
   background-color: var(--uploader-background-color, inherit);
 }
 
+.overlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  z-index: -1;
+}
+
 .dropzone {
-  background-color: rgba(226, 253, 255, 0.95);
   position: absolute;
   top: 0;
   bottom: 0;
@@ -224,6 +234,7 @@ template.innerHTML = `
 </div>
 
 <div class="dropzone" id="dropzone"></div>
+<div class="overlay" id="overlay"></div>
 `;
 
 const TYPES = {
@@ -240,6 +251,7 @@ class MuxUploaderElement extends HTMLElement {
   statusMessage: HTMLElement | null | undefined;
   retryMessage: HTMLElement | null | undefined;
   dropzone: HTMLElement | null | undefined;
+  overlay: HTMLElement | null | undefined;
 
   constructor() {
     super();
@@ -256,6 +268,7 @@ class MuxUploaderElement extends HTMLElement {
     this.statusMessage = this.shadowRoot?.getElementById('status-message');
     this.retryMessage = this.shadowRoot?.getElementById('retry-message');
     this.dropzone = this.shadowRoot?.getElementById('dropzone');
+    this.overlay = this.shadowRoot?.getElementById('overlay');
   }
 
   connectedCallback() {
@@ -349,6 +362,10 @@ class MuxUploaderElement extends HTMLElement {
     if (this.dropzone) {
       this.addEventListener('dragenter', (evt) => {
         console.log('dragenter');
+        if (this.overlay) {
+          this.overlay.style.zIndex = '20';
+          this.overlay.style.backgroundColor = 'rgba(226, 253, 255, 0.95)';
+        }
         evt.preventDefault();
         evt.stopPropagation();
         this.setAttribute('drag-active', '');
@@ -356,6 +373,10 @@ class MuxUploaderElement extends HTMLElement {
 
       this.addEventListener('dragleave', (evt) => {
         console.log('dragleave');
+        if (this.overlay) {
+          this.overlay.style.zIndex = '-1';
+          this.overlay.style.backgroundColor = '';
+        }
         this.removeAttribute('drag-active');
       });
 
